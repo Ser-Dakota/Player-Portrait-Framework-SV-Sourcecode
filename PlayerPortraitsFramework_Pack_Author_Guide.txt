@@ -1,0 +1,174 @@
+==========================================================================
+ Player Portraits Framework — Pack Author Guide  (v1.0)
+==========================================================================
+
+
+A Player Portraits Framework pack is a normal Content Patcher content pack that
+does two things:
+
+  1. LOADS its player face texture to a conventional asset target, and
+  2. REGISTERS itself (with a source rect) into the framework's packs dictionary.
+
+The framework detects your pack, picks the active one, and DRAWS the player
+portrait itself as an overlay — pinned to the bottom-left of the dialogue box,
+mirrored opposite the NPC's portrait, scaled to the player's resolution. You do
+NOT write any DDFC ("aedenthorn.DialogueDisplayFramework/dictionary") entries.
+The framework controls the layout geometry; DDFC still draws the NPC portrait,
+the dialogue box, the name, and the hearts as normal.
+
+
+--------------------------------------------------------------------------
+ 1. manifest.json
+--------------------------------------------------------------------------
+{
+  "Name": "My Player Portrait Pack",
+  "Author": "You",
+  "Version": "1.0.0",
+  "UniqueID": "you.MyPlayerPortraitPack",
+  "ContentPackFor": { "UniqueID": "Pathoschild.ContentPatcher", "MinimumVersion": "2.0.0" },
+  "Dependencies": [
+    { "UniqueID": "dakot.PlayerPortraitsFramework", "IsRequired": true }
+  ]
+}
+
+
+--------------------------------------------------------------------------
+ 2. content.json
+--------------------------------------------------------------------------
+
+  // a) Load your face texture to the CONVENTIONAL target for your pack ID:
+  //        Custom/<your-pack-UniqueID>/PlayerPortrait
+  {
+    "Action": "Load",
+    "Target": "Custom/you.MyPlayerPortraitPack/PlayerPortrait",
+    "FromFile": "assets/player.png",
+    "Priority": "Medium"
+  },
+
+  // b) Register, including the REQUIRED Portrait source rect (X, Y, W, H):
+  {
+    "Action": "EditData",
+    "Target": "dakot.PlayerPortraitsFramework/Packs",
+    "Entries": {
+      "you.MyPlayerPortraitPack": {
+        "PackName": "My Player Portrait Pack",
+        "Author": "You",
+        "Portrait": { "X": 0, "Y": 0, "W": 1024, "H": 1024 }
+      }
+    }
+  }
+
+IMPORTANT:
+  • The Load target and the registration key must use the SAME pack ID — the
+    framework builds the texture path as  Custom/<packId>/PlayerPortrait .
+  • Portrait { X, Y, W, H } is the source rectangle (in pixels) drawn from your
+    texture. It is REQUIRED for a static pack; a pack without it (and without an
+    Animation) is detected but draws nothing.
+  • Key casing is not significant (X/Y/W/H, x/y/w/h, or mixed all work), but
+    uppercase is the convention used throughout this guide.
+
+
+--------------------------------------------------------------------------
+ How the framework draws your portrait
+--------------------------------------------------------------------------
+  • The portrait is pinned with its bottom-LEFT corner at the dialogue box's
+    top-LEFT corner (mirroring the NPC portrait, which sits bottom-right), tucked
+    behind the box frame.
+  • It is scaled relative to the player's viewport, so the layout holds across
+    resolutions.
+  • It renders identically on every NPC — the framework draws its own overlay and
+    does not touch per-NPC DDFC entries, so there is no per-character setup and
+    nothing to shadow.
+  • The framework does NOT alter the NPC portrait artwork, the dialogue box frame,
+    the name, or the hearts — those remain DDFC's job.
+
+
+--------------------------------------------------------------------------
+ 3. Animated portraits — optional
+--------------------------------------------------------------------------
+
+Instead of a static Portrait rect, a pack may declare an "Animation". When set
+and valid it WINS — the Portrait rect is ignored. Point your Load at the full
+sprite-sheet PNG (a horizontal strip, or a grid via Columns).
+
+  "you.MyPlayerPortraitPack": {
+    "PackName": "My Player Portrait Pack",
+    "Author": "You",
+    "Animation": {
+      "FrameWidth": 1024, "FrameHeight": 1024,
+      "FrameCount": 4, "FrameDurationMs": 200
+    }
+  }
+
+  • Columns (optional): grid width. 0 / omitted = a single horizontal strip.
+  • FrameDurationMs: uniform per-frame timing (defaults to 100 if omitted).
+  • FrameDurations (optional): per-frame timing array, length == FrameCount,
+    OVERRIDES FrameDurationMs. Great for blinks:
+        "FrameDurations": [1800, 100, 100, 100]
+  • A frame duration of 0 freezes on that frame.
+  • Invalid settings (FrameCount/FrameWidth/FrameHeight <= 0) fall back to static.
+  • Aspect ratio comes from FrameWidth/FrameHeight (one frame), never the whole
+    strip — so frames are never squashed.
+  • The animation starts at frame 0 each conversation and plays across pages.
+
+
+--------------------------------------------------------------------------
+ 4. Author-declared defaults + the player config menu
+--------------------------------------------------------------------------
+
+You may declare optional DEFAULTS — the out-of-box look you intend. All are
+optional; omit any to use the framework baseline (scale 100, offset 0, box
+height 100, name shown). The player's GMCM settings then STACK on top of your
+defaults: OFFSETS ADD (author default + player nudge), SCALES MULTIPLY (author
+default × player percent).
+
+Scales are PERCENT integers — 100 = unchanged, 150 = 1.5×, 75 = 0.75× — the SAME
+unit the player sees in GMCM. (Write 150, not 1.5.)
+
+  "you.MyPlayerPortraitPack": {
+    "PackName": "My Player Portrait Pack",
+    "Author": "You",
+    "Portrait": { "X": 0, "Y": 0, "W": 1024, "H": 1024 },
+
+    "DefaultPlayerScale": 100,
+    "DefaultPlayerOffsetX": 0,
+    "DefaultPlayerOffsetY": 0,
+    "DefaultNpcScale": 100,
+    "DefaultNpcOffsetX": 0,
+    "DefaultNpcOffsetY": 0,
+    "DefaultBoxHeight": 100,
+    "DefaultNameHidden": false
+  }
+
+Players adjust these live in Generic Mod Config Menu (no restart): pack
+selection, player portrait scale/offset, NPC portrait scale/offset, dialogue
+box height, and a "hide NPC name" toggle. GMCM is optional — without it, the
+config.json values still apply.
+
+Note on the name toggle: the name is hidden if EITHER your DefaultNameHidden OR
+the player's toggle says hide. A player cannot force-show a name you hid by
+default (rare; use DefaultNameHidden only when your layout truly needs it).
+
+
+--------------------------------------------------------------------------
+ 5. Accessibility — bigger TEXT
+--------------------------------------------------------------------------
+
+The "Box Height" option makes the dialogue box TALLER/shorter (width is locked) —
+it resizes the text REGION (the vertical space, so more/fewer lines fit), NOT the
+font. Stardew's font is a fixed-size asset; the framework does not (and will not)
+resize rendered letters, and it does not change the text wrap width.
+
+Players who want LARGER TEXT should use the game's built-in UI Scale option
+(Options menu), which enlarges the real font and the whole UI. Box Height is for
+fitting more/fewer lines — not for text size.
+
+
+--------------------------------------------------------------------------
+ 6. Compatibility note
+--------------------------------------------------------------------------
+
+Player Portraits Framework is NOT compatible with the standalone DDFCScaler mod —
+both control dialogue box and portrait geometry and will conflict. The framework
+logs a startup warning if DDFCScaler is detected. Other DDFC-based portrait mods
+(HD NPC portraits, etc.) are fine; the framework only adds the player portrait.

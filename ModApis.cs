@@ -1,0 +1,34 @@
+#nullable disable
+using System;
+using StardewModdingAPI;
+
+namespace PlayerPortraitsFramework
+{
+    /// <summary>
+    /// The subset of Generic Mod Config Menu's API the framework uses (Milestone 9). Acquired at
+    /// runtime via <c>Helper.ModRegistry.GetApi</c> — GMCM is an OPTIONAL dependency, so everything
+    /// degrades gracefully (no menu) when it isn't installed. Signatures copied from GMCM's public API.
+    /// </summary>
+    public interface IGenericModConfigMenuApi
+    {
+        void Register(IManifest mod, Action reset, Action save, bool titleScreenOnly = false);
+        void Unregister(IManifest mod);
+
+        void AddSectionTitle(IManifest mod, Func<string> text, Func<string> tooltip = null);
+
+        void AddTextOption(IManifest mod, Func<string> getValue, Action<string> setValue,
+            Func<string> name, Func<string> tooltip = null, string[] allowedValues = null,
+            Func<string, string> formatAllowedValue = null, string fieldId = null);
+
+        void AddNumberOption(IManifest mod, Func<int> getValue, Action<int> setValue,
+            Func<string> name, Func<string> tooltip = null, int? min = null, int? max = null,
+            int? interval = null, Func<int, string> formatValue = null, string fieldId = null);
+
+        void AddNumberOption(IManifest mod, Func<float> getValue, Action<float> setValue,
+            Func<string> name, Func<string> tooltip = null, float? min = null, float? max = null,
+            float? interval = null, Func<float, string> formatValue = null, string fieldId = null);
+
+        void AddBoolOption(IManifest mod, Func<bool> getValue, Action<bool> setValue,
+            Func<string> name, Func<string> tooltip = null, string fieldId = null);
+    }
+}

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>PlayerPortraitsFramework</AssemblyName>
+    <RootNamespace>PlayerPortraitsFramework</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Pathoschild.Stardew.ModBuildConfig automatically references SMAPI and Stardew Valley
+      assemblies from your local game install, and copies the build output into the Mods folder.
+    -->
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Milestone 3 dictates DDFC box/NPC-portrait geometry (TopRight), so we Harmony-patch DDFC
+      again. Reference DDFC's compiled assembly for its public types (DialogueBoxRenderer,
+      DialogueDisplayData, PortraitData, DialogueBoxInterface). DialogueBoxPatches is internal,
+      so UpdateDialogueBoxSize / ActiveData are reached via reflection at runtime.
+      Private=false: the DLLs stay in their own folders at runtime, not copied into our output.
+    -->
+    <Reference Include="DialogueDisplayFramework">
+      <HintPath>$(GamePath)\Mods\DialogueDisplayFramework\DialogueDisplayFramework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GamePath)\smapi-internal\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

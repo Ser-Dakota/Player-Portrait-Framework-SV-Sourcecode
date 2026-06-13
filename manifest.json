@@ -1,0 +1,24 @@
+{
+  "Name": "Player Portraits Framework",
+  "Author": "SerDakota",
+  "Version": "0.9.0",
+  "Description": "Draws a player portrait alongside the NPC portrait in dialogue, sourced from separately-installed portrait packs. Milestone 9: GMCM config (pack selection, portrait/box scale + offsets, name hide).",
+  "UniqueID": "dakot.PlayerPortraitsFramework",
+  "EntryDll": "PlayerPortraitsFramework.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [],
+  "Dependencies": [
+    {
+      "UniqueID": "Pathoschild.ContentPatcher",
+      "IsRequired": true
+    },
+    {
+      "UniqueID": "Mangupix.DialogueDisplayFrameworkContinued",
+      "IsRequired": true
+    },
+    {
+      "UniqueID": "spacechase0.GenericModConfigMenu",
+      "IsRequired": false
+    }
+  ]
+}
