@@ -54,9 +54,3 @@ Player portrait packs are normal Content Patcher content packs — no C# require
 
 - **SerDakota** — design, content, testing
 - Built on [Dialogue Display Framework Continued](https://www.nexusmods.com/stardewvalley/mods/11661) by Mangupix
-
----
-
-## License
-
-_TODO: add a license._
