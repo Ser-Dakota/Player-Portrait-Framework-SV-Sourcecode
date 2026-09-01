@@ -1,4 +1,6 @@
 #nullable enable
+using System.Collections.Generic;
+
 namespace PlayerPortraitsFramework
 {
     /// <summary>
@@ -27,6 +29,35 @@ namespace PlayerPortraitsFramework
         /// and ignores <see cref="Portrait"/> — the two are mutually exclusive, Animation wins.
         /// </summary>
         public AnimationSettings? Animation { get; set; }
+
+        // ── V2: emotion matching ─────────────────────────────────────────────────────────
+        // A pack is exactly ONE mode. Mode 1 (Simple) = Portrait/Animation above, unchanged.
+        // Mode 2 (EmotionStatic) = one EmotionSheet grid. Mode 3 (EmotionAnimated) = one file
+        // per emotion via EmotionAnimations. Content Patcher decides WHICH art is loaded (its
+        // When conditions swap the sheet or an individual slot); the framework only decides
+        // WHICH SLOT is on screen, from the NPC's live portrait index.
+
+        /// <summary>
+        /// Mode 2. ONE sheet carrying every emotion slot, sliced into cells. The sheet is the
+        /// costume unit: a CP condition swaps the WHOLE sheet (season/outfit), not per-emotion files.
+        /// Loaded to <c>Custom/&lt;packId&gt;/PlayerPortrait/Sheet</c>.
+        /// </summary>
+        public EmotionSheetSettings? EmotionSheet { get; set; }
+
+        /// <summary>
+        /// Mode 3. ONE FILE PER EMOTION, keyed by slot index as a STRING ("0", "1", …) because
+        /// that is how the value arrives from Content Patcher's EditData. Not a grid: animations
+        /// have different lengths per emotion, and a grid would force padding to the longest.
+        /// Each slot is loaded to <c>Custom/&lt;packId&gt;/PlayerPortrait/Emotion/&lt;slotIndex&gt;</c>.
+        /// </summary>
+        public Dictionary<string, AnimationSettings>? EmotionAnimations { get; set; }
+
+        /// <summary>
+        /// Optional remap for modes 2 and 3, declaring ONLY the exceptions — unlisted indices stay
+        /// 1:1 (NPC index N → player slot N). Lets an author reuse one drawn face across several
+        /// NPC moods. Keys are the NPC portrait index as a string; values are the player slot.
+        /// </summary>
+        public Dictionary<string, int>? EmotionMap { get; set; }
 
         // ── Author-declared defaults (Milestone 9) — the out-of-box look the author intends. ──
         // All optional; omitted = framework baseline (scale 100%, offset 0, box 100%, name shown).
@@ -88,5 +119,25 @@ namespace PlayerPortraitsFramework
         /// height &lt;= 0) are treated as static by the framework so there is never a divide-by-zero.
         /// </summary>
         public bool IsValid => FrameCount > 0 && FrameWidth > 0 && FrameHeight > 0;
+    }
+
+    /// <summary>
+    /// Mode 2 sheet geometry: one image carrying every emotion slot in a grid. The framework
+    /// computes cell N's rect from these, so the author never writes per-emotion rects.
+    /// </summary>
+    public class EmotionSheetSettings
+    {
+        /// <summary>Width of one emotion slot, in pixels. Also drives the draw scale (NOT the sheet width).</summary>
+        public int SlotWidth { get; set; }
+        /// <summary>Height of one emotion slot, in pixels. Also drives the draw scale (NOT the sheet height).</summary>
+        public int SlotHeight { get; set; }
+        /// <summary>Columns in the grid. Defaults to 2, matching vanilla portrait sheets.</summary>
+        public int Columns { get; set; } = 2;
+
+        /// <summary>
+        /// True when the settings describe a usable sheet. Invalid settings (slot width or height
+        /// &lt;= 0) are rejected at mode resolution so there is never a zero-size source rect.
+        /// </summary>
+        public bool IsValid => SlotWidth > 0 && SlotHeight > 0;
     }
 }

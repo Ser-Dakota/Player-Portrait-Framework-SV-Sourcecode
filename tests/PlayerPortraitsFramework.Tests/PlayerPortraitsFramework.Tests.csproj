@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>PlayerPortraitsFramework.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The framework's PURE logic is linked in, not project-referenced: the main project
+      needs the Stardew/SMAPI/DDFC assemblies to build, and these three files deliberately
+      have zero game dependencies precisely so they can be tested without the game.
+    -->
+    <Compile Include="..\..\PackRegistration.cs" Link="PackRegistration.cs" />
+    <Compile Include="..\..\EmotionResolver.cs" Link="EmotionResolver.cs" />
+    <Compile Include="..\..\AnimationCursor.cs" Link="AnimationCursor.cs" />
+  </ItemGroup>
+
+</Project>
