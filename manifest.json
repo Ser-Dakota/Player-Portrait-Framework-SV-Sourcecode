@@ -1,8 +1,8 @@
 {
   "Name": "Player Portraits Framework",
   "Author": "SerDakota",
-  "Version": "0.9.0",
-  "Description": "Draws a player portrait alongside the NPC portrait in dialogue, sourced from separately-installed portrait packs. Milestone 9: GMCM config (pack selection, portrait/box scale + offsets, name hide).",
+  "Version": "1.0.0",
+  "Description": "Draws a player portrait alongside the NPC portrait in dialogue, sourced from separately-installed portrait packs. V2: the player's expression matches the NPC's live portrait index, via a single emotion sheet or one animated file per emotion.",
   "UniqueID": "dakot.PlayerPortraitsFramework",
   "EntryDll": "PlayerPortraitsFramework.dll",
   "MinimumApiVersion": "4.0.0",

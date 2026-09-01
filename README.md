@@ -12,7 +12,20 @@ This is a **framework**. On its own it does nothing visible — it needs a **pla
 - Lets the NPC portrait, name, hearts, and dialogue box keep rendering through Dialogue Display Framework Continued (DDFC) — the framework only adds the player portrait and controls layout geometry.
 - Scales the whole layout to the player's resolution.
 - Supports **animated** player portraits (sprite-sheet strips).
+- Matches the player's **expression to the NPC's**, by reading the NPC's live portrait index while the dialogue is on screen — so it works with any NPC and any NPC-portrait mod, with no per-character setup.
 - Adds an in-game config menu (via Generic Mod Config Menu) for pack selection, portrait scale/offset, box height, and a name-plate toggle.
+
+### Pack modes
+
+A pack picks exactly one of three shapes:
+
+| Mode | Shape | Use it for |
+|---|---|---|
+| **Simple** | One image (static or animated). | A single player face, no emotion awareness. This is the original v1 behaviour — existing packs keep working unchanged. |
+| **Emotion, static** | One sheet carrying every emotion slot in a grid. | Emotion matching without animation. The sheet is the costume unit: one Content Patcher condition swaps all the emotions at once (a winter outfit, a higher heart level). |
+| **Emotion, animated** | One file per emotion, each with its own animation. | Emotion matching where each expression animates at its own length — a 4-frame blink for neutral, a 2-frame bounce for happy. |
+
+Content Patcher decides *which art is loaded* (any `When` condition you like); the framework decides *which slot is on screen*. The two layer rather than compete.
 
 ---
 
@@ -38,7 +51,7 @@ This is a **framework**. On its own it does nothing visible — it needs a **pla
 
 ## For pack authors
 
-Player portrait packs are normal Content Patcher content packs — no C# required. They load a portrait texture and register it with the framework. See the **Pack Author Guide** included in this repository for the full registration schema, animation format, and author-default fields.
+Player portrait packs are normal Content Patcher content packs — no C# required. They load a portrait texture and register it with the framework. See the **Pack Author Guide** included in this repository for the full registration schema, animation format, the three pack modes, and author-default fields.
 
 ---
 
