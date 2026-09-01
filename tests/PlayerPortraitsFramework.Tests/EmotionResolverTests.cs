@@ -125,3 +125,62 @@ public class ResolveModeTests
         Assert.Equal(2, new EmotionSheetSettings().Columns);
     }
 }
+
+public class ResolveSlotTests
+{
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 1)]
+    [InlineData(5, 5)]
+    [InlineData(37, 37)]
+    public void NoMap_IsOneToOne(int npcIndex, int expected)
+    {
+        Assert.Equal(expected, EmotionResolver.ResolveSlot(npcIndex, null));
+    }
+
+    [Fact]
+    public void EmptyMap_IsOneToOne()
+    {
+        Assert.Equal(3, EmotionResolver.ResolveSlot(3, new Dictionary<string, int>()));
+    }
+
+    [Fact]
+    public void ListedIndex_IsRemapped()
+    {
+        // The spec's example: {"1": 4, "2": 0, "3": 0}
+        var map = new Dictionary<string, int> { ["1"] = 4, ["2"] = 0, ["3"] = 0 };
+        Assert.Equal(4, EmotionResolver.ResolveSlot(1, map));
+        Assert.Equal(0, EmotionResolver.ResolveSlot(2, map));
+        Assert.Equal(0, EmotionResolver.ResolveSlot(3, map));
+    }
+
+    [Fact]
+    public void UnlistedIndex_StaysOneToOne()
+    {
+        var map = new Dictionary<string, int> { ["1"] = 4, ["2"] = 0, ["3"] = 0 };
+        Assert.Equal(0, EmotionResolver.ResolveSlot(0, map));
+        Assert.Equal(4, EmotionResolver.ResolveSlot(4, map));
+        Assert.Equal(9, EmotionResolver.ResolveSlot(9, map));
+    }
+
+    [Fact]
+    public void NegativeNpcIndex_ClampsToZero()
+    {
+        Assert.Equal(0, EmotionResolver.ResolveSlot(-1, null));
+    }
+
+    [Fact]
+    public void NegativeNpcIndex_ClampsBeforeLookup()
+    {
+        // -1 becomes 0 first, so it picks up slot 0's remap rather than missing the map entirely.
+        var map = new Dictionary<string, int> { ["0"] = 7 };
+        Assert.Equal(7, EmotionResolver.ResolveSlot(-1, map));
+    }
+
+    [Fact]
+    public void NegativeMappedValue_ClampsToZero()
+    {
+        var map = new Dictionary<string, int> { ["2"] = -5 };
+        Assert.Equal(0, EmotionResolver.ResolveSlot(2, map));
+    }
+}

@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace PlayerPortraitsFramework
@@ -44,6 +45,28 @@ namespace PlayerPortraitsFramework
                 return PackMode.Simple;
 
             return PackMode.None;
+        }
+
+        /// <summary>
+        /// The NPC's live portrait index → the player slot to draw. Default is 1:1; the optional
+        /// map declares ONLY the exceptions. Negatives clamp to 0 at both ends (before the lookup,
+        /// so a negative index still picks up slot 0's remap, and after, so a bad map value can
+        /// never produce a negative slot).
+        /// </summary>
+        /// <param name="npcPortraitIndex">The integer the game already resolved for the NPC's expression.</param>
+        /// <param name="emotionMap">Exception map keyed by the NPC index as a string; null = pure 1:1.</param>
+        public static int ResolveSlot(int npcPortraitIndex, Dictionary<string, int>? emotionMap)
+        {
+            if (npcPortraitIndex < 0)
+                npcPortraitIndex = 0;
+
+            // Keys arrive from Content Patcher JSON as strings, so the lookup is string-keyed.
+            // InvariantCulture: digit formatting must never follow the player's locale.
+            if (emotionMap != null
+                && emotionMap.TryGetValue(npcPortraitIndex.ToString(CultureInfo.InvariantCulture), out int mapped))
+                return mapped < 0 ? 0 : mapped;
+
+            return npcPortraitIndex;
         }
     }
 }
