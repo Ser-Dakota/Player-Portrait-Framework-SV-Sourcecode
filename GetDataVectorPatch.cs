@@ -22,7 +22,7 @@ namespace PlayerPortraitsFramework
         {
             try
             {
-                if (ModEntry.ActiveTexturePath is null)       return true; // no pack → leave DDFC alone
+                if (!ModEntry.HasActivePack)                  return true; // no pack → leave DDFC alone
                 if (data is not PortraitData portrait)        return true; // only the NPC portrait
                 if (box is null || !box.isPortraitBox() || box.isQuestion) return true;
 

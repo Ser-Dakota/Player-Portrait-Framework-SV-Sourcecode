@@ -41,7 +41,7 @@ namespace PlayerPortraitsFramework
         {
             try
             {
-                if (ModEntry.ActiveTexturePath is null)
+                if (!ModEntry.HasActivePack)
                     return; // no pack → leave DDFC's box alone
                 if (dialogueBox is null || !dialogueBox.isPortraitBox() || dialogueBox.isQuestion)
                     return;

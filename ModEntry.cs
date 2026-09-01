@@ -61,10 +61,28 @@ namespace PlayerPortraitsFramework
         internal static IModHelper SHelper  = null!;
 
         // Active pack state read by the Harmony patches (static so they can reach it).
-        internal static string?            ActiveTexturePath; // convention-derived asset name, or null when no pack
-        internal static PortraitRect?      ActiveRect;        // the active pack's static source rect (null for pure-animated packs)
-        internal static AnimationSettings? ActiveAnimation;   // non-null ONLY when valid → the portrait animates (Portrait ignored)
-        private  static Texture2D?         ActiveTexture;     // cached loaded texture (own-draw; not DDFC's)
+        internal static string?            ActivePackId;      // the resolved pack's UniqueID, or null when no pack
+        internal static PackMode           ActiveMode;        // which of the three shapes the active pack declares
+        internal static string?            ActiveTexturePath; // modes 1 & 2 only: the single texture. Mode 3 is per-slot.
+        internal static PortraitRect?      ActiveRect;        // mode 1: static source rect (null for a pure-animated pack)
+        internal static AnimationSettings? ActiveAnimation;   // mode 1: non-null ONLY when valid → the portrait animates
+        internal static EmotionSheetSettings? ActiveSheet;    // mode 2: the emotion grid's geometry
+        internal static Dictionary<string, AnimationSettings>? ActiveEmotionAnimations; // mode 3: per-slot animations
+        internal static Dictionary<string, int>?               ActiveEmotionMap;        // modes 2 & 3: exception remap
+
+        /// <summary>
+        /// Whether a usable pack is active. This — NOT <see cref="ActiveTexturePath"/> — is the gate
+        /// every patch checks: mode 3 has no single texture path, so the old null-path check would
+        /// silently disable the box geometry for emotion-animated packs.
+        /// </summary>
+        internal static bool HasActivePack => ActiveMode != PackMode.None;
+
+        /// <summary>Mode 1 texture target: one image, no emotion awareness (V1, unchanged).</summary>
+        internal static string SimpleTexturePath(string packId) => $"Custom/{packId}/PlayerPortrait";
+        /// <summary>Mode 2 texture target: one grid sheet carrying every emotion slot.</summary>
+        internal static string SheetTexturePath(string packId) => $"Custom/{packId}/PlayerPortrait/Sheet";
+        /// <summary>Mode 3 texture target: one animated file per emotion slot.</summary>
+        internal static string EmotionTexturePath(string packId, int slot) => $"Custom/{packId}/PlayerPortrait/Emotion/{slot}";
 
         // ── Player config + GMCM (Milestone 9) ───────────────────────────────────────────────
         internal static ModConfig Config = new();               // player prefs; overwritten from disk in Entry
@@ -132,9 +150,16 @@ namespace PlayerPortraitsFramework
                 ConfigureGmcm(); // packs changed → rebuild the dropdown (allowedValues is baked at registration)
             }
 
-            // If the active pack's texture asset was invalidated, drop our cache so it reloads.
-            if (ActiveTexturePath != null && e.NamesWithoutLocale.Any(n => n.IsEquivalentTo(ActiveTexturePath)))
-                ActiveTexture = null;
+            // Any invalidation under this pack's asset prefix drops the cache: modes 2 and 3 have
+            // several targets (the sheet, or one file per emotion slot), and CP re-Loads them when a
+            // When condition flips (a new season, a heart level). Clearing the memoised MISSES matters
+            // as much as the hits — a slot that wasn't loadable before may be now.
+            if (ActivePackId != null)
+            {
+                string prefix = SimpleTexturePath(ActivePackId); // "Custom/<packId>/PlayerPortrait" — covers /Sheet and /Emotion/N
+                if (e.NamesWithoutLocale.Any(n => n.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+                    ClearTextureCache();
+            }
         }
 
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
@@ -334,10 +359,16 @@ namespace PlayerPortraitsFramework
         // ── Detect + pick ──────────────────────────────────────────────────────────────
         private void RefreshActivePack()
         {
-            ActiveTexturePath = null;
-            ActiveRect        = null;
-            ActiveAnimation   = null;
-            ActiveTexture     = null;
+            ActivePackId            = null;
+            ActiveMode              = PackMode.None;
+            ActiveTexturePath       = null;
+            ActiveRect              = null;
+            ActiveAnimation         = null;
+            ActiveSheet             = null;
+            ActiveEmotionAnimations = null;
+            ActiveEmotionMap        = null;
+            ClearTextureCache();
+            DrawPlayerPortraitPatch.ResetFallbackWarnings();
 
             // Reset author defaults to framework baselines until a pack is resolved below.
             ActivePlayerScale = 1f; ActivePlayerOffsetX = 0; ActivePlayerOffsetY = 0;
@@ -383,57 +414,117 @@ namespace PlayerPortraitsFramework
             ActiveBoxHeight     = (active?.DefaultBoxHeight ?? 100) / 100f;
             ActiveNameHidden    = active?.DefaultNameHidden     ?? false;
 
-            // Static vs animated (V2). Animation wins when present AND valid; an invalid Animation
-            // (count/width/height <= 0) falls back to the static Portrait rect. A pure-animated pack
-            // may omit Portrait entirely; a static pack still requires it.
-            var  anim     = active?.Animation;
-            bool animated = anim is { IsValid: true };
-            var  rect     = active?.Portrait;
+            // ── Mode selection (V2) ──────────────────────────────────────────────────────
+            // Exactly one of three shapes. EmotionResolver owns the precedence rules so they are
+            // unit-tested; this method only wires the chosen shape to its asset target(s).
+            ActiveMode       = EmotionResolver.ResolveMode(active);
+            ActiveEmotionMap = active?.EmotionMap;
 
-            if (!animated && rect is null)
+            if (ActiveMode == PackMode.None)
             {
-                string why = anim is null
-                    ? "is missing its required Portrait source rect"
-                    : "has an invalid Animation (FrameCount/FrameWidth/FrameHeight must be > 0) and no fallback Portrait rect";
-                Monitor.Log($"Active pack '{activeId}' {why} — nothing to draw.", LogLevel.Warn);
+                Monitor.Log(
+                    $"Active pack '{activeId}' declares nothing usable — it needs a Portrait rect, a valid "
+                    + "Animation, a valid EmotionSheet, or at least one valid EmotionAnimations entry. Nothing to draw.",
+                    LogLevel.Warn);
                 return;
             }
 
-            if (animated && rect != null)
-                Monitor.Log($"Active pack '{activeId}' declares both Animation and Portrait; Animation wins, Portrait ignored.", LogLevel.Info);
+            ActivePackId = activeId;
 
-            ActiveTexturePath = $"Custom/{activeId}/PlayerPortrait";
-            ActiveRect        = rect;                      // may be null for a pure-animated pack
-            ActiveAnimation   = animated ? anim : null;    // non-null only when valid
+            switch (ActiveMode)
+            {
+                // ── Mode 1 (= V1): one image, no emotion awareness. Behaviour is unchanged. ──
+                case PackMode.Simple:
+                {
+                    var  anim     = active!.Animation;
+                    bool animated = anim is { IsValid: true };
 
-            if (animated)
-                Monitor.Log($"Active pack: {activeId}  (texture: {ActiveTexturePath}, animated: {anim!.FrameCount} frames @ {anim.FrameWidth}x{anim.FrameHeight})", LogLevel.Info);
-            else
-                Monitor.Log($"Active pack: {activeId}  (texture: {ActiveTexturePath}, rect: {rect!.X},{rect.Y} {rect.W}x{rect.H})", LogLevel.Info);
+                    if (animated && active.Portrait != null)
+                        Monitor.Log($"Active pack '{activeId}' declares both Animation and Portrait; Animation wins, Portrait ignored.", LogLevel.Info);
+
+                    ActiveTexturePath = SimpleTexturePath(activeId);
+                    ActiveRect        = active.Portrait;             // may be null for a pure-animated pack
+                    ActiveAnimation   = animated ? anim : null;      // non-null only when valid
+
+                    if (animated)
+                        Monitor.Log($"Active pack: {activeId}  (simple, texture: {ActiveTexturePath}, animated: {anim!.FrameCount} frames @ {anim.FrameWidth}x{anim.FrameHeight})", LogLevel.Info);
+                    else
+                        Monitor.Log($"Active pack: {activeId}  (simple, texture: {ActiveTexturePath}, rect: {ActiveRect!.X},{ActiveRect.Y} {ActiveRect.W}x{ActiveRect.H})", LogLevel.Info);
+                    break;
+                }
+
+                // ── Mode 2: ONE sheet carrying all emotion slots. A CP condition swaps the whole
+                //    sheet (season/outfit), so the framework only ever asks for one asset here. ──
+                case PackMode.EmotionStatic:
+                {
+                    ActiveSheet       = active!.EmotionSheet;
+                    ActiveTexturePath = SheetTexturePath(activeId);
+                    Monitor.Log(
+                        $"Active pack: {activeId}  (emotion sheet, texture: {ActiveTexturePath}, "
+                        + $"slots {ActiveSheet!.SlotWidth}x{ActiveSheet.SlotHeight} in {(ActiveSheet.Columns > 0 ? ActiveSheet.Columns : 2)} columns)",
+                        LogLevel.Info);
+                    break;
+                }
+
+                // ── Mode 3: ONE FILE PER EMOTION. No single texture path — each slot is loaded on
+                //    demand from Custom/<packId>/PlayerPortrait/Emotion/<slot>, which is also how
+                //    seasonal variants work (several CP Loads to the SAME slot, different When). ──
+                case PackMode.EmotionAnimated:
+                {
+                    ActiveEmotionAnimations = active!.EmotionAnimations;
+                    ActiveTexturePath       = null;
+                    Monitor.Log(
+                        $"Active pack: {activeId}  (emotion animations, {ActiveEmotionAnimations!.Count} slot(s): "
+                        + $"{string.Join(", ", ActiveEmotionAnimations.Keys.OrderBy(k => k, StringComparer.Ordinal))})",
+                        LogLevel.Info);
+                    break;
+                }
+            }
         }
 
-        /// <summary>
-        /// Returns the active pack's texture, loading it on demand. Returns null quietly if the
-        /// PNG isn't loadable yet (e.g. before Content Patcher applies its Load) so the caller
-        /// skips the frame and retries. Self-healing: reloads if the cached texture was disposed.
-        /// </summary>
-        internal static Texture2D? TryGetActiveTexture()
-        {
-            if (ActiveTexturePath is null)
-                return null;
+        // ── Texture cache (V2) ───────────────────────────────────────────────────────────
+        // V1 cached ONE texture; mode 3 needs one per emotion slot, so the cache is keyed by asset
+        // name. FailedAssets memoises misses: a slot a pack never provides would otherwise throw and
+        // be caught 60× a second. Both are cleared on invalidation and on pack refresh.
+        private static readonly Dictionary<string, Texture2D> TextureCache = new();
+        private static readonly HashSet<string>               FailedAssets = new();
 
-            if (ActiveTexture is { IsDisposed: false })
-                return ActiveTexture;
+        /// <summary>
+        /// Returns a pack texture, loading it on demand. Returns null quietly if the PNG isn't
+        /// loadable (e.g. before Content Patcher applies its Load, or a slot the pack never supplies)
+        /// so the caller can fall back or skip the frame. Self-healing: reloads if the cached texture
+        /// was disposed.
+        /// </summary>
+        internal static Texture2D? TryGetTexture(string assetName)
+        {
+            if (TextureCache.TryGetValue(assetName, out var cached))
+            {
+                if (cached is { IsDisposed: false })
+                    return cached;
+                TextureCache.Remove(assetName);
+            }
+
+            if (FailedAssets.Contains(assetName))
+                return null; // known miss — don't throw/catch every frame
 
             try
             {
-                ActiveTexture = SHelper.GameContent.Load<Texture2D>(ActiveTexturePath);
-                return ActiveTexture;
+                var texture = SHelper.GameContent.Load<Texture2D>(assetName);
+                TextureCache[assetName] = texture;
+                return texture;
             }
             catch
             {
-                return null; // not loadable yet — skip silently, retried next frame
+                FailedAssets.Add(assetName);
+                return null;
             }
+        }
+
+        /// <summary>Drops every cached texture and every memoised miss (pack change / asset invalidation).</summary>
+        private static void ClearTextureCache()
+        {
+            TextureCache.Clear();
+            FailedAssets.Clear();
         }
     }
 }
