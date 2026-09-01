@@ -184,3 +184,103 @@ public class ResolveSlotTests
         Assert.Equal(0, EmotionResolver.ResolveSlot(2, map));
     }
 }
+
+public class SheetCellTests
+{
+    // A 2-column sheet of 1024px slots, 3 rows tall → slots 0..5.
+    private static EmotionSheetSettings Sheet(int columns = 2) =>
+        new() { SlotWidth = 1024, SlotHeight = 1024, Columns = columns };
+
+    [Theory]
+    [InlineData(0, 0, 0)]
+    [InlineData(1, 1024, 0)]
+    [InlineData(2, 0, 1024)]
+    [InlineData(3, 1024, 1024)]
+    [InlineData(4, 0, 2048)]
+    [InlineData(5, 1024, 2048)]
+    public void TwoColumnGrid_WalksRowsThenColumns(int slot, int expectedX, int expectedY)
+    {
+        bool ok = EmotionResolver.TryGetSheetCell(slot, Sheet(), 2048, 3072, out int x, out int y);
+        Assert.True(ok);
+        Assert.Equal(expectedX, x);
+        Assert.Equal(expectedY, y);
+    }
+
+    [Fact]
+    public void ColumnsOverride_IsHonoured()
+    {
+        // 3 columns: slot 3 wraps to row 1, column 0.
+        bool ok = EmotionResolver.TryGetSheetCell(3, Sheet(columns: 3), 3072, 2048, out int x, out int y);
+        Assert.True(ok);
+        Assert.Equal(0, x);
+        Assert.Equal(1024, y);
+    }
+
+    [Fact]
+    public void ZeroOrNegativeColumns_DefaultsToTwo()
+    {
+        bool ok = EmotionResolver.TryGetSheetCell(2, Sheet(columns: 0), 2048, 2048, out int x, out int y);
+        Assert.True(ok);
+        Assert.Equal(0, x);
+        Assert.Equal(1024, y);
+    }
+
+    [Fact]
+    public void SlotBelowTheSheet_FallsBackToZero()
+    {
+        // Sheet is only 2 rows (4 slots); slot 4 would start at y=2048, past the bottom.
+        bool ok = EmotionResolver.TryGetSheetCell(4, Sheet(), 2048, 2048, out int x, out int y);
+        Assert.False(ok);
+        Assert.Equal(0, x);
+        Assert.Equal(0, y);
+    }
+
+    [Fact]
+    public void SlotPastTheRightEdge_FallsBackToZero()
+    {
+        // Sheet is only 1 column wide but declares 2 → slot 1 would start at x=1024, past the edge.
+        bool ok = EmotionResolver.TryGetSheetCell(1, Sheet(), 1024, 2048, out int x, out int y);
+        Assert.False(ok);
+        Assert.Equal(0, x);
+        Assert.Equal(0, y);
+    }
+
+    [Fact]
+    public void NegativeSlot_FallsBackToZero()
+    {
+        bool ok = EmotionResolver.TryGetSheetCell(-3, Sheet(), 2048, 2048, out int x, out int y);
+        Assert.False(ok);
+        Assert.Equal(0, x);
+        Assert.Equal(0, y);
+    }
+
+    [Fact]
+    public void NullSheet_FallsBackToZero()
+    {
+        bool ok = EmotionResolver.TryGetSheetCell(0, null, 2048, 2048, out int x, out int y);
+        Assert.False(ok);
+        Assert.Equal(0, x);
+        Assert.Equal(0, y);
+    }
+
+    [Fact]
+    public void InvalidSheetDimensions_FallBackToZero()
+    {
+        var bad = new EmotionSheetSettings { SlotWidth = 0, SlotHeight = 1024 };
+        bool ok = EmotionResolver.TryGetSheetCell(0, bad, 2048, 2048, out int x, out int y);
+        Assert.False(ok);
+        Assert.Equal(0, x);
+        Assert.Equal(0, y);
+    }
+
+    [Fact]
+    public void SlotZero_OnASheetTooSmallForOneCell_FallsBackToZero()
+    {
+        // Degenerate art: even slot 0 does not fit. Still returns 0,0 — the caller draws a clipped
+        // cell rather than crashing, and the warn-once log tells the author.
+        bool ok = EmotionResolver.TryGetSheetCell(0, Sheet(), 512, 512, out int x, out int y);
+        Assert.False(ok);
+        Assert.Equal(0, x);
+        Assert.Equal(0, y);
+    }
+}

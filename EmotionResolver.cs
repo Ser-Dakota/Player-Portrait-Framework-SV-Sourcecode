@@ -68,5 +68,34 @@ namespace PlayerPortraitsFramework
 
             return npcPortraitIndex;
         }
+
+        /// <summary>
+        /// Mode 2: the top-left corner of emotion slot <paramref name="slot"/> within the sheet.
+        /// Returns <c>false</c> — with <paramref name="x"/>/<paramref name="y"/> set to 0,0 — when the
+        /// cell would fall outside the loaded texture. That IS the clamp-to-slot-0 rule: slot 0 always
+        /// lives at the origin, so the caller can draw the returned coordinates either way and use the
+        /// <c>false</c> purely to decide whether to log a (warn-once) fallback.
+        /// </summary>
+        public static bool TryGetSheetCell(int slot, EmotionSheetSettings? sheet, int textureWidth, int textureHeight, out int x, out int y)
+        {
+            x = 0;
+            y = 0;
+
+            if (slot < 0 || sheet is not { IsValid: true })
+                return false;
+
+            int columns = sheet.Columns > 0 ? sheet.Columns : 2; // 2 = vanilla portrait sheet layout
+            int cellX = (slot % columns) * sheet.SlotWidth;
+            int cellY = (slot / columns) * sheet.SlotHeight;
+
+            // Bounds check against the ACTUAL loaded texture, not a declared slot count: the author
+            // never states how many slots exist, so the sheet's real size is the only truth available.
+            if (cellX + sheet.SlotWidth > textureWidth || cellY + sheet.SlotHeight > textureHeight)
+                return false;
+
+            x = cellX;
+            y = cellY;
+            return true;
+        }
     }
 }
