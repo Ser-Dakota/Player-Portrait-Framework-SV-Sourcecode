@@ -31,6 +31,10 @@ namespace PlayerPortraitsFramework
                 // choice boxes (shop confirms), which both draw paths dereference.
                 if (box is null || !box.isPortraitBox()) return true;
 
+                // Question boxes are opt-out: with the toggle off the framework leaves them entirely
+                // to DDFC, positioning included, so they look exactly as they would without this mod.
+                if (box.isQuestion && !QuestionBoxPortraitPatch.Enabled) return true;
+
                 int sourceSize = Math.Min(portrait.W, portrait.H);
                 if (sourceSize <= 0)
                     sourceSize = 1024;
@@ -38,7 +42,9 @@ namespace PlayerPortraitsFramework
                 // Pin the bottom-RIGHT corner to the box's top-RIGHT corner, using the framework's
                 // own box rect (NOT box.width, which may still carry DDFC's stale 1200 default).
                 // Bottom sits on BorderTop (the frame edge) so it tucks under the frame.
-                var (_, boxRight, contentTop, borderTop) = ModEntry.GetBoxRect();
+                // Same rule as the player portrait: the framework's own box normally, the LIVE question
+                // box during a question, so both portraits pin to the same top corners.
+                var (_, boxRight, contentTop, borderTop) = ModEntry.GetBoxRectFor(box);
                 int   basePortraitHeight = (int)(contentTop * ModEntry.PortraitHeightFactor);
                 int   portraitHeight     = (int)(basePortraitHeight * ModEntry.EffectiveNpcScale()); // author × player
                 if (portraitHeight <= 0)

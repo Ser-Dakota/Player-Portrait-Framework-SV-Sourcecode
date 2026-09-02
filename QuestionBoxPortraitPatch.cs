@@ -42,11 +42,62 @@ namespace PlayerPortraitsFramework
         /// <summary>Clears the NPC-draw failure latch (called when the active pack is re-resolved).</summary>
         internal static void ResetFailureLatch() => _npcDrawFailed = false;
 
+        /// <summary>
+        /// Whether the framework should touch question boxes at all. When the player turns this off it
+        /// governs BOTH the portraits and the box reshaping below, so "off" means question boxes render
+        /// exactly as the game and DDFC would without this mod.
+        /// </summary>
+        internal static bool Enabled => ModEntry.Config.QuestionBoxPortraits;
+
+        /// <summary>Whether this box is one the framework draws question portraits for.</summary>
+        private static bool ShouldHandle(DialogueBox? box) =>
+            Enabled
+            && ModEntry.HasActivePack
+            && box is { isQuestion: true, transitioning: false }
+            && box.isPortraitBox(); // null-deref guard for generic choice boxes — see Postfix
+
+        /// <summary>
+        /// Aligns the question box HORIZONTALLY with the framework's box, before anything is drawn.
+        ///
+        /// <para>The game builds a question box as a fresh <see cref="DialogueBox"/> that never passes
+        /// through the framework's box-resize path, so it keeps DDFC's default width while the
+        /// portraits pin to the framework's wider box — leaving the player portrait visibly hanging off
+        /// the box's left edge.</para>
+        ///
+        /// <para>WIDTH AND X ONLY, deliberately. Height stays the game's <c>heightForQuestions</c>, so
+        /// the option list can never be clipped. Widening does leave <c>heightForQuestions</c> slightly
+        /// over-generous — it was computed against the narrower width, so the prompt now wraps to fewer
+        /// lines than it budgeted for — which shows up as a little extra space inside the box, never as
+        /// lost text.</para>
+        ///
+        /// <para>This runs as a PREFIX rather than from the box-resize postfix so the stamp lands before
+        /// any of the frame is drawn. Vanilla passes x/width to <c>drawBox</c> by value but reads the
+        /// fields directly when drawing the prompt and responses, so stamping mid-frame would tear the
+        /// frame away from its text for one frame.</para>
+        /// </summary>
+        public static void Prefix(DialogueBox __instance)
+        {
+            try
+            {
+                if (!ShouldHandle(__instance))
+                    return;
+
+                var (boxX, _, boxWidth, _) = ModEntry.GetScaledBox();
+                __instance.x                 = boxX;
+                __instance.xPositionOnScreen = boxX;
+                __instance.width             = boxWidth;
+            }
+            catch (Exception ex)
+            {
+                ModEntry.SMonitor.Log($"Question-box alignment failed: {ex}", LogLevel.Error);
+            }
+        }
+
         public static void Postfix(DialogueBox __instance, SpriteBatch b)
         {
             try
             {
-                if (!ModEntry.HasActivePack)
+                if (!Enabled || !ModEntry.HasActivePack)
                     return;
                 if (__instance is null || !__instance.isQuestion)
                     return; // normal dialogue is served by DrawPlayerPortraitPatch, via DDFC's renderer

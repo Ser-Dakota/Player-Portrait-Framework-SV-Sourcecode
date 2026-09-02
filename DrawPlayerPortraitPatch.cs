@@ -88,7 +88,10 @@ namespace PlayerPortraitsFramework
                 if (sourceSize <= 0)
                     sourceSize = 1024;
 
-                var (boxLeft, _, contentTop, borderTop) = ModEntry.GetBoxRect();
+                // Pins to the framework's own box for normal dialogue, and to the LIVE question box
+                // when this is a question — the game sizes that one from its option count, so it sits
+                // higher than the framework's box and by a different amount each time.
+                var (boxLeft, _, contentTop, borderTop) = ModEntry.GetBoxRectFor(dialogueBox);
                 int basePortraitHeight = (int)(contentTop * ModEntry.PortraitHeightFactor);
                 int portraitHeight     = (int)(basePortraitHeight * ModEntry.EffectivePlayerScale()); // author × player
                 if (portraitHeight <= 0)

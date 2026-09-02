@@ -233,6 +233,35 @@ namespace PlayerPortraitsFramework
             return (x, x + w, y, y - BorderThickness);
         }
 
+        /// <summary>
+        /// The rect the portraits pin to for THIS box.
+        /// <para>Normal dialogue keeps using <see cref="GetBoxRect"/> — the framework's own
+        /// viewport-derived box, unchanged.</para>
+        /// <para>A QUESTION box is sized by the GAME from its option count
+        /// (<c>heightForQuestions</c>), and the framework deliberately does not own that height, so it
+        /// sits higher than <see cref="GetBoxRect"/> and by a different amount per question. Pinning
+        /// to the fixed rect there left the portraits overlapping the box and covering its text, so
+        /// question boxes pin to what is ACTUALLY on screen instead.</para>
+        /// <para>Note this also feeds the portrait SIZE (height = ContentTop × <see
+        /// cref="PortraitHeightFactor"/>), which is what keeps portraits on screen: a taller question
+        /// box means less room above it, so the portraits scale down to fit rather than running off
+        /// the top edge.</para>
+        /// </summary>
+        internal static (int Left, int Right, int ContentTop, int BorderTop) GetBoxRectFor(DialogueBox? box)
+        {
+            if (box is { isQuestion: true })
+            {
+                // The question branch of DialogueBox.draw draws the box at
+                //     y - (heightForQuestions - height), with height heightForQuestions
+                // so this — not box.y — is the top edge actually on screen. The bottom edge
+                // (y + height) is invariant; only the top moves as options are added.
+                int contentTop = box.y - (box.heightForQuestions - box.height);
+                return (box.x, box.x + box.width, contentTop, contentTop - BorderThickness);
+            }
+
+            return GetBoxRect();
+        }
+
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e) => RefreshActivePack();
 
         /// <summary>
@@ -351,6 +380,13 @@ namespace PlayerPortraitsFramework
                     + "fits more lines of text. This scales the SPACE, not the font — for bigger TEXT, "
                     + "use the game's UI Scale option.",
                 min: 50, max: ScaleMax, interval: ScaleStep, formatValue: v => $"{v}%");
+
+            // ── Question boxes ───────────────────────────────────────────────
+            _gmcm.AddSectionTitle(ModManifest, () => "Player Choices");
+            _gmcm.AddBoolOption(ModManifest, () => Config.QuestionBoxPortraits, v => Config.QuestionBoxPortraits = v,
+                () => "Portraits During Choices",
+                () => "Keep both portraits on screen while you're picking a dialogue option. Turn this "
+                    + "off to leave choice boxes exactly as the game draws them.");
 
             // ── Name plate ───────────────────────────────────────────────────
             _gmcm.AddSectionTitle(ModManifest, () => "Name Plate");
