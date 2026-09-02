@@ -109,14 +109,7 @@ namespace PlayerPortraitsFramework
                 // and our own draw dereference it. isPortraitBox() is false there, so this is the
                 // guard that prevents a null-deref. Only the isQuestion half was relaxed.
                 if (!__instance.isPortraitBox())
-                {
-                    // Logged so a skipped generic choice box leaves POSITIVE evidence in the trace,
-                    // rather than us inferring "it worked" from the absence of a line.
-                    QuestionBoxDiagnostics.NoteSkippedQuestion(__instance);
                     return;
-                }
-
-                QuestionBoxDiagnostics.NoteQuestion(__instance);
 
                 DrawNpcPortrait(b, __instance);
 

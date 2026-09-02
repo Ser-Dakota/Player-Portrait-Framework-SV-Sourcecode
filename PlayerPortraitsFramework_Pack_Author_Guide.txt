@@ -256,8 +256,16 @@ unit the player sees in GMCM. (Write 150, not 1.5.)
 
 Players adjust these live in Generic Mod Config Menu (no restart): pack
 selection, player portrait scale/offset, NPC portrait scale/offset, dialogue
-box height, and a "hide NPC name" toggle. GMCM is optional — without it, the
-config.json values still apply.
+box height, a "portraits during choices" toggle, and a "hide NPC name" toggle.
+GMCM is optional — without it, the config.json values still apply.
+
+Note on player-choice boxes: both portraits stay on screen while the player
+picks a dialogue option. A choice box is sized by the GAME from its option
+count, so it sits higher than a normal dialogue box — the portraits follow it
+and scale to the space above it, which means they shift and resize a little
+between questions. Nothing is required of your pack for this; it uses the same
+art and the same emotion slot the conversation was already showing. Players who
+prefer the vanilla look can switch it off in GMCM.
 
 Note on the name toggle: the name is hidden if EITHER your DefaultNameHidden OR
 the player's toggle says hide. A player cannot force-show a name you hid by

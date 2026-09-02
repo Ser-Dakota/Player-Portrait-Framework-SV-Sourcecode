@@ -272,8 +272,6 @@ namespace PlayerPortraitsFramework
         /// </summary>
         private void OnMenuChanged(object? sender, MenuChangedEventArgs e)
         {
-            QuestionBoxDiagnostics.NoteMenuChanged(e.OldMenu, e.NewMenu);
-
             bool opened = e.NewMenu is DialogueBox;
             bool closed = e.OldMenu is DialogueBox;
             if (opened || closed)

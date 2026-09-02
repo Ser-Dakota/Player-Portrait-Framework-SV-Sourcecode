@@ -59,7 +59,6 @@ namespace PlayerPortraitsFramework
             // never reaches during a question box (draw gates drawPortrait on !isQuestion), so the
             // condition was unreachable. Question boxes are served by QuestionBoxPortraitPatch, which
             // calls DrawPlayerPortrait below directly.
-            QuestionBoxDiagnostics.NoteNormalBox(dialogueBox);
             DrawPlayerPortrait(b, dialogueBox);
         }
 

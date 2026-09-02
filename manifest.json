@@ -1,8 +1,8 @@
 {
   "Name": "Player Portraits Framework",
   "Author": "SerDakota",
-  "Version": "1.0.0",
-  "Description": "Draws a player portrait alongside the NPC portrait in dialogue, sourced from separately-installed portrait packs. V2: the player's expression matches the NPC's live portrait index, via a single emotion sheet or one animated file per emotion.",
+  "Version": "1.1.0",
+  "Description": "Draws a player portrait alongside the NPC portrait in dialogue, sourced from separately-installed portrait packs. The player's expression matches the NPC's live portrait index, via a single emotion sheet or one animated file per emotion. Portraits also persist through player-choice boxes.",
   "UniqueID": "dakot.PlayerPortraitsFramework",
   "EntryDll": "PlayerPortraitsFramework.dll",
   "MinimumApiVersion": "4.0.0",
