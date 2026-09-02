@@ -61,6 +61,30 @@ namespace PlayerPortraitsFramework
                 LogLevel.Info);
         }
 
+        /// <summary>
+        /// Logs a question box the framework deliberately SKIPPED because <c>isPortraitBox()</c> was
+        /// false — a generic choice box (sleep prompt, festival exit, shop confirm) built by the
+        /// <c>DialogueBox(string, Response[], width)</c> constructor, which leaves
+        /// <c>characterDialogue</c> null. Positive evidence that the null-deref guard is doing its job.
+        /// </summary>
+        internal static void NoteSkippedQuestion(DialogueBox box)
+        {
+            int id           = IdOf(box);
+            int responses    = box.responses?.Length ?? 0;
+            string signature = $"skip:{id}:{responses}:{box.heightForQuestions}";
+            if (signature == _lastQuestionSignature)
+                return;
+            _lastQuestionSignature = signature;
+
+            ModEntry.SMonitor.Log(
+                $"[Q-DIAG] SKIPPED question box#{id} — isPortraitBox()=false, portraits correctly not drawn"
+                + $" | characterDialogue={(box.characterDialogue is null ? "null" : "present")}"
+                + $" | speaker={box.characterDialogue?.speaker?.Name ?? "(none)"}"
+                + $" | options={responses}"
+                + $" | height={box.height} heightForQuestions={box.heightForQuestions} width={box.width}",
+                LogLevel.Info);
+        }
+
         /// <summary>Logs dialogue box open/close with instance identity, to catch fresh-box construction.</summary>
         internal static void NoteMenuChanged(object? oldMenu, object? newMenu)
         {
