@@ -24,7 +24,12 @@ namespace PlayerPortraitsFramework
             {
                 if (!ModEntry.HasActivePack)                  return true; // no pack → leave DDFC alone
                 if (data is not PortraitData portrait)        return true; // only the NPC portrait
-                if (box is null || !box.isPortraitBox() || box.isQuestion) return true;
+                // isQuestion relaxed (question-box pass): during a question the framework calls DDFC's
+                // DrawPortrait itself, which routes through GetDataVector — so this prefix has to run
+                // for the NPC portrait to land in the framework's pinned position instead of DDFC's.
+                // isPortraitBox() stays: it is what guards the null characterDialogue on generic
+                // choice boxes (shop confirms), which both draw paths dereference.
+                if (box is null || !box.isPortraitBox()) return true;
 
                 int sourceSize = Math.Min(portrait.W, portrait.H);
                 if (sourceSize <= 0)

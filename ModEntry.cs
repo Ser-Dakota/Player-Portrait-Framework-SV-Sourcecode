@@ -243,6 +243,8 @@ namespace PlayerPortraitsFramework
         /// </summary>
         private void OnMenuChanged(object? sender, MenuChangedEventArgs e)
         {
+            QuestionBoxDiagnostics.NoteMenuChanged(e.OldMenu, e.NewMenu);
+
             bool opened = e.NewMenu is DialogueBox;
             bool closed = e.OldMenu is DialogueBox;
             if (opened || closed)
@@ -369,6 +371,7 @@ namespace PlayerPortraitsFramework
             ActiveEmotionMap        = null;
             ClearTextureCache();
             DrawPlayerPortraitPatch.ResetFallbackWarnings();
+            QuestionBoxPortraitPatch.ResetFailureLatch();
 
             // Reset author defaults to framework baselines until a pack is resolved below.
             ActivePlayerScale = 1f; ActivePlayerOffsetX = 0; ActivePlayerOffsetY = 0;
