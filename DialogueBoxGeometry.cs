@@ -148,8 +148,14 @@ namespace PlayerPortraitsFramework
             }
         }
 
-        /// <summary>Reflects out DDFC's static <c>DialogueBoxPatches.ActiveData</c> (internal type).</summary>
-        private static DialogueDisplayData? GetActiveData()
+        /// <summary>
+        /// Reflects out DDFC's static <c>DialogueBoxPatches.ActiveData</c> (internal type).
+        /// <para>Internal rather than private since the question-box pass: DDFC assigns this only
+        /// inside its own UpdateDialogueBoxSize (which returns early for questions) and never nulls
+        /// it, so during a question box it still holds the speaker's resolved entry — which is what
+        /// <see cref="QuestionBoxPortraitPatch"/> feeds to DDFC's portrait renderer.</para>
+        /// </summary>
+        internal static DialogueDisplayData? GetActiveData()
         {
             var patchesType = AccessTools.TypeByName("DialogueDisplayFramework.Framework.DialogueBoxPatches");
             if (patchesType is null)

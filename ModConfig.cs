@@ -27,5 +27,12 @@ namespace PlayerPortraitsFramework
 
         // ── Name plate ──
         public bool NameHidden { get; set; } = false;
+
+        /// <summary>
+        /// Draw both portraits during player-choice (question) boxes. On by default. When off the
+        /// framework leaves question boxes entirely alone — no portraits, and no box reshaping either,
+        /// so they render exactly as the game and DDFC would on their own.
+        /// </summary>
+        public bool QuestionBoxPortraits { get; set; } = true;
     }
 }

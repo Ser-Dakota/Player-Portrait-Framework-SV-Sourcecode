@@ -13,7 +13,8 @@ This is a **framework**. On its own it does nothing visible — it needs a **pla
 - Scales the whole layout to the player's resolution.
 - Supports **animated** player portraits (sprite-sheet strips).
 - Matches the player's **expression to the NPC's**, by reading the NPC's live portrait index while the dialogue is on screen — so it works with any NPC and any NPC-portrait mod, with no per-character setup.
-- Adds an in-game config menu (via Generic Mod Config Menu) for pack selection, portrait scale/offset, box height, and a name-plate toggle.
+- Keeps both portraits on screen through **player-choice boxes**, so the conversation stays visual at the moment you're picking a reply. Can be switched off.
+- Adds an in-game config menu (via Generic Mod Config Menu) for pack selection, portrait scale/offset, box height, portraits during choices, and a name-plate toggle.
 
 ### Pack modes
 

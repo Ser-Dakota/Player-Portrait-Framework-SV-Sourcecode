@@ -50,13 +50,29 @@ namespace PlayerPortraitsFramework
 
         public static void Postfix(SpriteBatch b, DialogueBox dialogueBox)
         {
+            if (!ModEntry.HasActivePack)
+                return;
+            if (dialogueBox is null || !dialogueBox.isPortraitBox())
+                return;
+
+            // No isQuestion check here any more: this postfix rides DDFC's renderer, which vanilla
+            // never reaches during a question box (draw gates drawPortrait on !isQuestion), so the
+            // condition was unreachable. Question boxes are served by QuestionBoxPortraitPatch, which
+            // calls DrawPlayerPortrait below directly.
+            DrawPlayerPortrait(b, dialogueBox);
+        }
+
+        /// <summary>
+        /// Draws the player portrait for this box. Shared by the normal-dialogue postfix above and by
+        /// <see cref="QuestionBoxPortraitPatch"/>, so emotion resolution, the animation cursor and the
+        /// pinning maths live in exactly one place regardless of which draw path got us here.
+        /// <para>Callers are responsible for the <c>isPortraitBox()</c> guard — this method
+        /// dereferences <c>characterDialogue</c>.</para>
+        /// </summary>
+        internal static void DrawPlayerPortrait(SpriteBatch b, DialogueBox dialogueBox)
+        {
             try
             {
-                if (!ModEntry.HasActivePack)
-                    return;
-                if (dialogueBox is null || !dialogueBox.isPortraitBox() || dialogueBox.isQuestion)
-                    return;
-
                 // The NPC's LIVE expression: the integer the game already resolved. NOT the $h/$s
                 // tokens — those are vanilla dialogue syntax converted to an index before we see it.
                 int npcPortraitIndex = dialogueBox.characterDialogue?.getPortraitIndex() ?? 0;
@@ -71,7 +87,10 @@ namespace PlayerPortraitsFramework
                 if (sourceSize <= 0)
                     sourceSize = 1024;
 
-                var (boxLeft, _, contentTop, borderTop) = ModEntry.GetBoxRect();
+                // Pins to the framework's own box for normal dialogue, and to the LIVE question box
+                // when this is a question — the game sizes that one from its option count, so it sits
+                // higher than the framework's box and by a different amount each time.
+                var (boxLeft, _, contentTop, borderTop) = ModEntry.GetBoxRectFor(dialogueBox);
                 int basePortraitHeight = (int)(contentTop * ModEntry.PortraitHeightFactor);
                 int portraitHeight     = (int)(basePortraitHeight * ModEntry.EffectivePlayerScale()); // author × player
                 if (portraitHeight <= 0)
