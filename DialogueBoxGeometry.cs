@@ -41,7 +41,7 @@ namespace PlayerPortraitsFramework
         {
             try
             {
-                if (ModEntry.ActiveTexturePath is null)
+                if (!ModEntry.HasActivePack)
                     return; // no pack → leave DDFC's box alone
                 if (dialogueBox is null || !dialogueBox.isPortraitBox() || dialogueBox.isQuestion)
                     return;
@@ -77,6 +77,8 @@ namespace PlayerPortraitsFramework
                     if (active.Jewel != null)
                         active.Jewel.Disabled = true; // jewel removed from the design
 
+                    DisablePortraitChrome(active);
+
                     if (active.Name != null)
                     {
                         // Name plate hide toggle (M9): author default OR player toggle.
@@ -101,6 +103,48 @@ namespace PlayerPortraitsFramework
             catch (Exception ex)
             {
                 Monitor.Log($"Box resize postfix failed: {ex}", LogLevel.Error);
+            }
+        }
+
+        // ── DDFC's built-in portrait chrome ──────────────────────────────────────────────
+        // DDFC seeds a "default" dictionary entry (DataHelpers.DefaultValues) that ships the vanilla
+        // portrait frame as two ORDINARY DDFC elements, both anchored to the box's RIGHT edge:
+        //   • an Image  — LooseSprites/Cursors rect 583,411,115,97 (the same rect vanilla
+        //     DialogueBox.drawPortrait uses for the inset panel), at XOffset -452
+        //   • a Divider — the separator bar, at XOffset -484
+        // Every NPC without its own entry falls back to "default", so both are present in ActiveData.
+        // They are NOT reachable through the `portrait` field, which DDFC documents as excluding the
+        // frame background — moving or scaling the portrait leaves them where they are.
+        private const string PortraitBackgroundId = "DialogueDisplayFramework.Images.PortraitBackground";
+        private const string PortraitDividerId    = "DialogueDisplayFramework.Dividers.PortraitDivider";
+
+        /// <summary>
+        /// Suppresses DDFC's built-in portrait frame + divider. The framework lifts the NPC portrait
+        /// OUT of the box (top-right, above the frame), so this chrome would otherwise render as an
+        /// empty inset panel with nothing in it. The two-portrait layout is frameless by design.
+        /// <para>Matched BY ID, not by position in the list, so a pack author's own images and
+        /// dividers are left alone. A pack that supplies its own per-character entry without a
+        /// <c>CopyFrom</c> (Pretty Anime Portraits, for one) never merges the default entry in, so it
+        /// has no such elements and this is a harmless no-op there.</para>
+        /// </summary>
+        private static void DisablePortraitChrome(DialogueDisplayData active)
+        {
+            if (active.Images != null)
+            {
+                foreach (var image in active.Images)
+                {
+                    if (image != null && image.ID == PortraitBackgroundId)
+                        image.Disabled = true;
+                }
+            }
+
+            if (active.Dividers != null)
+            {
+                foreach (var divider in active.Dividers)
+                {
+                    if (divider != null && divider.ID == PortraitDividerId)
+                        divider.Disabled = true;
+                }
             }
         }
 

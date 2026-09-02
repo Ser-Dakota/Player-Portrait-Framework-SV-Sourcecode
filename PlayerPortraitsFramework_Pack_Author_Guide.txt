@@ -1,12 +1,12 @@
 ==========================================================================
- Player Portraits Framework — Pack Author Guide  (v1.0)
+ Player Portraits Framework — Pack Author Guide  (v2.0)
 ==========================================================================
 
 
 A Player Portraits Framework pack is a normal Content Patcher content pack that
 does two things:
 
-  1. LOADS its player face texture to a conventional asset target, and
+  1. LOADS its player face texture(s) to a conventional asset target, and
   2. REGISTERS itself (with a source rect) into the framework's packs dictionary.
 
 The framework detects your pack, picks the active one, and DRAWS the player
@@ -66,6 +66,7 @@ IMPORTANT:
     Animation) is detected but draws nothing.
   • Key casing is not significant (X/Y/W/H, x/y/w/h, or mixed all work), but
     uppercase is the convention used throughout this guide.
+  • The Load target depends on your mode — see section 4 for the emotion targets.
 
 
 --------------------------------------------------------------------------
@@ -113,7 +114,120 @@ sprite-sheet PNG (a horizontal strip, or a grid via Columns).
 
 
 --------------------------------------------------------------------------
- 4. Author-declared defaults + the player config menu
+ 4. Emotion matching — optional
+--------------------------------------------------------------------------
+
+The framework can match the PLAYER's expression to the NPC's. It reads the NPC's
+CURRENT portrait index while the dialogue is on screen and draws your matching
+slot — so it works with any NPC and any NPC-portrait mod, with no per-character
+setup and nothing to write about $h / $s dialogue tokens.
+
+Two layers, and they do not compete:
+  • CONTENT PATCHER decides WHICH ART IS LOADED. Put any When condition you like
+    (season, weather, hearts, time, indoors) on your Load entries. The framework
+    never knows conditions exist.
+  • THE FRAMEWORK decides WHICH SLOT IS ON SCREEN, from the NPC's live index.
+
+Your pack is exactly ONE of three modes:
+  Mode 1  Simple            — sections 2 and 3 above. One image. No emotion
+                              awareness. Unchanged from v1; existing packs keep
+                              working with no edits.
+  Mode 2  Emotion, static   — one sheet carrying every emotion.
+  Mode 3  Emotion, animated — one file per emotion, each with its own animation.
+
+Do not mix modes in one pack. If you declare several anyway, the framework picks
+mode 3 over mode 2 over mode 1 and ignores the rest.
+
+
+ 4a. Mode 2 — one sheet, all emotions
+--------------------------------------------------------------------------
+
+Load ONE sheet to:   Custom/<your-pack-UniqueID>/PlayerPortrait/Sheet
+
+Declare the slot size so the framework can compute cell N's rectangle. Columns
+defaults to 2, matching vanilla portrait sheets:
+
+  "you.MyPlayerPortraitPack": {
+    "PackName": "My Player Portrait Pack",
+    "Author": "You",
+    "EmotionSheet": { "SlotWidth": 1024, "SlotHeight": 1024, "Columns": 2 }
+  }
+
+Cells are numbered left-to-right, top-to-bottom: slot 0 top-left, slot 1 to its
+right, slot 2 starting the second row, and so on.
+
+THE SHEET IS THE COSTUME UNIT. To vary emotions by season / weather / hearts,
+write a SECOND Load to the SAME target with a When condition — one winter sheet
+carrying all the emotions, one condition. Do NOT split static emotions into
+per-emotion files:
+
+  { "Action": "Load", "Target": "Custom/you.MyPack/PlayerPortrait/Sheet",
+    "FromFile": "assets/emotions.png" },
+  { "Action": "Load", "Target": "Custom/you.MyPack/PlayerPortrait/Sheet",
+    "FromFile": "assets/emotions_winter.png", "When": { "Season": "winter" } }
+
+
+ 4b. Mode 3 — one file per emotion, animated
+--------------------------------------------------------------------------
+
+Load ONE FILE PER EMOTION to:
+    Custom/<your-pack-UniqueID>/PlayerPortrait/Emotion/<slotIndex>
+
+Not a grid — animations have different lengths per emotion, and a grid would
+force you to pad every emotion to the longest one and produce an absurd PNG.
+
+Give each slot its own animation block. The fields are exactly the ones from
+section 3, so there is nothing new to learn:
+
+  "you.MyPlayerPortraitPack": {
+    "PackName": "My Player Portrait Pack",
+    "Author": "You",
+    "EmotionAnimations": {
+      "0": { "FrameWidth": 1024, "FrameHeight": 1024, "FrameCount": 4, "FrameDurationMs": 200 },
+      "1": { "FrameWidth": 1024, "FrameHeight": 1024, "FrameCount": 2, "FrameDurationMs": 300 }
+    }
+  }
+
+  • Slot keys are STRINGS ("0", "1", …).
+  • Columns, FrameDurationMs and FrameDurations work exactly as in section 3.
+  • Aspect ratio comes from FrameWidth/FrameHeight — never the whole strip.
+  • Each emotion restarts at FRAME 0 when the NPC's expression changes, so every
+    expression plays its own beat from the top.
+
+Seasonal / conditional variants = several Loads to the SAME slot target with
+different When conditions. Content Patcher resolves which one wins; the framework
+just asks for the slot:
+
+  { "Action": "Load", "Target": "Custom/you.MyPack/PlayerPortrait/Emotion/1",
+    "FromFile": "assets/happy.png" },
+  { "Action": "Load", "Target": "Custom/you.MyPack/PlayerPortrait/Emotion/1",
+    "FromFile": "assets/happy_winter.png", "When": { "Season": "winter" } }
+
+
+ 4c. EmotionMap — reusing one face across several moods
+--------------------------------------------------------------------------
+
+By default the mapping is 1:1 — NPC index N draws your slot N. Declare ONLY the
+exceptions; anything you leave out stays 1:1:
+
+  "EmotionMap": { "1": 4, "2": 0, "3": 0 }
+
+Here NPC index 1 draws your slot 4, indices 2 and 3 both draw slot 0, and every
+other index is unchanged. Use it to reuse one drawn face across several NPC moods
+instead of drawing near-duplicates.
+
+
+ 4d. Missing slots
+--------------------------------------------------------------------------
+
+If an NPC's index has no slot — outside your sheet, or a file you never supplied —
+the framework draws SLOT 0 and logs a warning ONCE. This is array safety, not a
+statement about your art: slot 0 holds whatever you put there. You do NOT need to
+supply every index; give slot 0 a sensible neutral face and the rest is optional.
+
+
+--------------------------------------------------------------------------
+ 5. Author-declared defaults + the player config menu
 --------------------------------------------------------------------------
 
 You may declare optional DEFAULTS — the out-of-box look you intend. All are
@@ -151,7 +265,7 @@ default (rare; use DefaultNameHidden only when your layout truly needs it).
 
 
 --------------------------------------------------------------------------
- 5. Accessibility — bigger TEXT
+ 6. Accessibility — bigger TEXT
 --------------------------------------------------------------------------
 
 The "Box Height" option makes the dialogue box TALLER/shorter (width is locked) —
@@ -165,7 +279,7 @@ fitting more/fewer lines — not for text size.
 
 
 --------------------------------------------------------------------------
- 6. Compatibility note
+ 7. Compatibility note
 --------------------------------------------------------------------------
 
 Player Portraits Framework is NOT compatible with the standalone DDFCScaler mod —
